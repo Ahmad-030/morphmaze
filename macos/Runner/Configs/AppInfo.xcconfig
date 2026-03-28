@@ -8,7 +8,7 @@
 PRODUCT_NAME = morphmaze
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.morphmaze
+PRODUCT_BUNDLE_IDENTIFIER = com.hayostun.morphmaze
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.example. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 com.hayostun. All rights reserved.

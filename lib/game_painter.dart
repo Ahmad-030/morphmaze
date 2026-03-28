@@ -23,16 +23,9 @@ class GamePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     _drawBackground(canvas, size);
     _drawGridLines(canvas, size);
-
     for (final wall in walls) {
       _drawWall(canvas, size, wall);
-      if (engine.state == GameState.playing) {
-        if (engine.checkCollision(wall, size)) {
-          engine.onCollision();
-        }
-      }
     }
-
     _drawPlayer(canvas, size);
   }
 
@@ -65,45 +58,36 @@ class GamePainter extends CustomPainter {
   void _drawWall(Canvas canvas, Size size, Wall wall) {
     final y = wall.y * size.height;
 
-    // Main wall fill
     final wallPaint = Paint()..color = AppTheme.wallColor;
     final wallRect = Rect.fromLTWH(0, y - _wallHeight / 2, size.width, _wallHeight);
 
-    // Create path with holes punched out
     final path = Path()..addRect(wallRect);
-
     for (final hole in wall.holes) {
       final holeX = hole.position * size.width;
       final holeW = hole.size * size.width;
-      final holePath = _holeClipPath(hole.shape, holeX, y, holeW);
-      path.addPath(holePath, Offset.zero);
+      path.addPath(_holeClipPath(hole.shape, holeX, y, holeW), Offset.zero);
     }
     path.fillType = PathFillType.evenOdd;
     canvas.drawPath(path, wallPaint);
 
-    // Wall border glow
     final borderPaint = Paint()
       ..color = AppTheme.wallBorder
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
     canvas.drawRect(wallRect, borderPaint);
 
-    // Draw hole outlines with neon glow
     for (final hole in wall.holes) {
-      _drawHoleOutline(canvas, hole, wall, size, y);
+      _drawHoleOutline(canvas, hole, size, y);
     }
   }
 
   Path _holeClipPath(ShapeType shape, double cx, double cy, double w) {
-    final h = _wallHeight * 1.0;
-    final hh = h / 2;
+    final hh = _wallHeight / 2;
     switch (shape) {
       case ShapeType.circle:
-        final r = w / 2;
-        return Path()..addOval(Rect.fromCircle(center: Offset(cx, cy), radius: r));
+        return Path()..addOval(Rect.fromCircle(center: Offset(cx, cy), radius: w / 2));
       case ShapeType.square:
-        final half = w / 2;
-        return Path()..addRect(Rect.fromLTWH(cx - half, cy - hh, w, h));
+        return Path()..addRect(Rect.fromLTWH(cx - w / 2, cy - hh, w, _wallHeight));
       case ShapeType.triangle:
         return Path()
           ..moveTo(cx, cy - hh)
@@ -113,23 +97,22 @@ class GamePainter extends CustomPainter {
     }
   }
 
-  void _drawHoleOutline(Canvas canvas, WallHole hole, Wall wall, Size size, double y) {
+  void _drawHoleOutline(Canvas canvas, WallHole hole, Size size, double y) {
     final color = ShapeConfig.forType(hole.shape).color;
     final holeX = hole.position * size.width;
     final holeW = hole.size * size.width;
+    final hh = _wallHeight / 2;
 
     final glowPaint = Paint()
       ..color = color.withOpacity(0.8)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-
     final solidPaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.8;
 
-    final hh = _wallHeight / 2;
     Path outlinePath;
     switch (hole.shape) {
       case ShapeType.circle:
@@ -152,7 +135,8 @@ class GamePainter extends CustomPainter {
   }
 
   void _drawPlayer(Canvas canvas, Size size) {
-    final cx = size.width / 2;
+    // Use engine.playerX for horizontal position
+    final cx = engine.playerX * size.width;
     final cy = size.height * 0.82;
     final config = ShapeConfig.forType(playerShape);
     final color = config.color;
@@ -164,13 +148,13 @@ class GamePainter extends CustomPainter {
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 24);
     canvas.drawCircle(Offset(cx, cy), _playerSize * 0.8, glowPaint);
 
-    // Fill paint
+    // Fill
     final fillPaint = Paint()
       ..shader = RadialGradient(
         colors: [color.withOpacity(0.9), color.withOpacity(0.4)],
       ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: half));
 
-    // Border paint
+    // Border
     final borderPaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
@@ -198,7 +182,7 @@ class GamePainter extends CustomPainter {
         break;
     }
 
-    // Inner shimmer
+    // Shimmer
     final shimmer = Paint()
       ..color = Colors.white.withOpacity(0.3)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);

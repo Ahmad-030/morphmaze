@@ -54,7 +54,7 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
                   icon: Icons.code_rounded,
                   color: AppTheme.neonPurple,
                   title: 'DEVELOPER',
-                  content: 'Built with Flutter & Dart\nPowered by Canvas rendering\nAhmad — ToolDynoApps',
+                  content: 'Developer: Ha Tusyos\nEmail: rapismenha@gmail.com',
                 ),
                 const SizedBox(height: 16),
                 _buildInfoCard(
@@ -65,13 +65,6 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
                       '2. Match your shape to the hole in the wall\n'
                       '3. Wrong shape = GAME OVER!\n'
                       '4. Survive longer to level up!',
-                ),
-                const SizedBox(height: 16),
-                _buildInfoCard(
-                  icon: Icons.star_rounded,
-                  color: AppTheme.neonYellow,
-                  title: 'VERSION',
-                  content: 'MorphMaze v1.0.0\nCategory: Arcade / Puzzle\nPlatform: Android',
                 ),
                 const SizedBox(height: 32),
               ],

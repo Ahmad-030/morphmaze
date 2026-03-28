@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:morphmaze/prefs_service.dart';
 
 import 'game_models.dart';
@@ -15,8 +16,11 @@ class GameEngine extends ChangeNotifier {
   int highScore = 0;
   int level = 1;
 
-  double _wallSpeed = 0.28;     // fraction/second
-  double _spawnInterval = 2.2;  // seconds
+  double _wallSpeed = 0.28;
+  double _spawnInterval = 2.2;
+
+  /// Player horizontal position as fraction 0.0..1.0
+  double playerX = 0.5;
 
   final Random _rng = Random();
   Timer? _ticker;
@@ -25,6 +29,7 @@ class GameEngine extends ChangeNotifier {
   bool _isDisposed = false;
 
   static const int _pointsPerLevel = 5;
+  static const double _playerHalfW = 0.07;
 
   Future<void> init() async {
     highScore = await PrefsService.getHighScore();
@@ -35,6 +40,7 @@ class GameEngine extends ChangeNotifier {
     score = 0;
     level = 1;
     walls.clear();
+    playerX = 0.5;
     playerShape = ShapeType.circle;
     _wallSpeed = 0.28;
     _spawnInterval = 2.2;
@@ -65,6 +71,13 @@ class GameEngine extends ChangeNotifier {
   void changeShape(ShapeType shape) {
     if (state != GameState.playing) return;
     playerShape = shape;
+    notifyListeners();
+  }
+
+  /// Called from drag gesture; dx is pixel delta, canvasWidth converts to fraction
+  void movePlayer(double dx, double canvasWidth) {
+    if (state != GameState.playing || canvasWidth == 0) return;
+    playerX = (playerX + dx / canvasWidth).clamp(_playerHalfW, 1.0 - _playerHalfW);
     notifyListeners();
   }
 
@@ -101,16 +114,26 @@ class GameEngine extends ChangeNotifier {
     final dt = now.difference(_lastTick!).inMilliseconds / 1000.0;
     _lastTick = now;
 
+    bool collided = false;
     final toRemove = <Wall>[];
+
     for (final wall in walls) {
       wall.y += wall.speed * dt;
       if (wall.y > 1.15) {
-        // Wall passed without collision
         toRemove.add(wall);
         _onWallPassed();
+      } else if (!collided && _checkCollision(wall)) {
+        collided = true;
       }
     }
     walls.removeWhere((w) => toRemove.contains(w));
+
+    if (collided) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (state == GameState.playing) onCollision();
+      });
+      return;
+    }
 
     if (!_isDisposed) notifyListeners();
   }
@@ -143,26 +166,21 @@ class GameEngine extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool checkCollision(Wall wall, Size canvasSize) {
-    // Player is at bottom-center, ~15% from bottom
-    const playerFraction = 0.82; // y position of player center
-    const playerSize = 0.09;     // relative to canvas width
-
+  bool _checkCollision(Wall wall) {
+    const playerFraction = 0.82;
     if (wall.y < playerFraction - 0.06 || wall.y > playerFraction + 0.12) return false;
-
-    const playerX = 0.5; // center horizontally
     for (final hole in wall.holes) {
-      if (_playerFitsHole(playerX, hole)) return false;
+      if (_playerFitsHole(hole)) return false;
     }
-    return true; // player hits wall
+    return true;
   }
 
-  bool _playerFitsHole(double playerX, WallHole hole) {
+  bool _playerFitsHole(WallHole hole) {
     if (hole.shape != playerShape) return false;
     final holeLeft = hole.position - hole.size / 2;
     final holeRight = hole.position + hole.size / 2;
-    const playerHalfW = 0.07;
-    return (playerX - playerHalfW) >= holeLeft && (playerX + playerHalfW) <= holeRight;
+    return (playerX - _playerHalfW) >= holeLeft &&
+        (playerX + _playerHalfW) <= holeRight;
   }
 
   @override

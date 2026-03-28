@@ -1,4 +1,4 @@
-package com.example.morphmaze
+package com.hayostun.morphmaze
 
 import io.flutter.embedding.android.FlutterActivity
 
